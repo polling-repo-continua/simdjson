@@ -3,6 +3,8 @@ template<size_t STEP_SIZE>
 struct buf_block_reader {
 public:
   really_inline buf_block_reader(const uint8_t *_buf, size_t _len);
+  buf_block_reader(const buf_block_reader<STEP_SIZE>& o) = delete;
+  buf_block_reader<STEP_SIZE>& operator=(const buf_block_reader<STEP_SIZE>& o) = delete;
   really_inline size_t block_index();
   really_inline bool has_full_block() const;
   really_inline const uint8_t *full_block() const;

@@ -21,7 +21,7 @@ struct json_character_block {
 
   really_inline uint64_t whitespace() const { return _whitespace; }
   really_inline uint64_t op() const { return _op; }
-  really_inline uint64_t scalar() { return ~(op() | whitespace()); }
+  really_inline uint64_t scalar() const { return ~(op() | whitespace()); }
 
   uint64_t _whitespace;
   uint64_t _op;

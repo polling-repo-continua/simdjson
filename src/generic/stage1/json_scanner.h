@@ -5,17 +5,18 @@ namespace stage1 {
  */
 struct json_block {
 public:
+
   /** The start of structurals */
-  really_inline uint64_t structural_start() { return potential_structural_start() & ~_string.string_tail(); }
+  really_inline uint64_t structural_start()  const  { return potential_structural_start() & ~_string.string_tail(); }
   /** All JSON whitespace (i.e. not in a string) */
-  really_inline uint64_t whitespace() { return non_quote_outside_string(_characters.whitespace()); }
+  really_inline uint64_t whitespace() const { return non_quote_outside_string(_characters.whitespace()); }
 
   // Helpers
 
   /** Whether the given characters are inside a string (only works on non-quotes) */
-  really_inline uint64_t non_quote_inside_string(uint64_t mask) { return _string.non_quote_inside_string(mask); }
+  really_inline uint64_t non_quote_inside_string(uint64_t mask) const { return _string.non_quote_inside_string(mask); }
   /** Whether the given characters are outside a string (only works on non-quotes) */
-  really_inline uint64_t non_quote_outside_string(uint64_t mask) { return _string.non_quote_outside_string(mask); }
+  really_inline uint64_t non_quote_outside_string(uint64_t mask) const { return _string.non_quote_outside_string(mask); }
 
   // string and escape characters
   json_string_block _string;
@@ -27,11 +28,11 @@ private:
   // Potential structurals (i.e. disregarding strings)
 
   /** operators plus scalar starts like 123, true and "abc" */
-  really_inline uint64_t potential_structural_start() { return _characters.op() | potential_scalar_start(); }
+  really_inline uint64_t potential_structural_start()  const { return _characters.op() | potential_scalar_start(); }
   /** the start of non-operator runs, like 123, true and "abc" */
-  really_inline uint64_t potential_scalar_start() { return _characters.scalar() & ~follows_potential_scalar(); }
+  really_inline uint64_t potential_scalar_start()  const { return _characters.scalar() & ~follows_potential_scalar(); }
   /** whether the given character is immediately after a non-operator like 123, true or " */
-  really_inline uint64_t follows_potential_scalar() { return _follows_potential_scalar; }
+  really_inline uint64_t follows_potential_scalar() const  { return _follows_potential_scalar; }
 };
 
 /**
@@ -49,6 +50,7 @@ private:
 class json_scanner {
 public:
   json_scanner() {}
+
   really_inline json_block next(const simd::simd8x64<uint8_t>& in);
   really_inline error_code finish(bool streaming);
 

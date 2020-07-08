@@ -1,6 +1,7 @@
 namespace stage1 {
 
 struct json_string_block {
+
   // Escaped characters (characters following an escape() character)
   really_inline uint64_t escaped() const { return _escaped; }
   // Escape characters (backslashes that are not escaped--i.e. in \\, includes only the first \)
