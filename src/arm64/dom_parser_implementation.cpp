@@ -101,27 +101,48 @@ really_inline simd8<bool> must_be_2_3_continuation(simd8<uint8_t> prev2, simd8<u
     return is_third_byte ^ is_fourth_byte;
 }
 
+} // namespace SIMDJSON_IMPLEMENTATION
+} // namespace simdjson
+
 #include "generic/stage1/buf_block_reader.h"
 #include "generic/stage1/json_string_scanner.h"
 #include "generic/stage1/json_scanner.h"
+#include "generic/stage1/json_minifier.h"
+#include "generic/stage1/find_next_document_index.h"
+#include "generic/stage1/utf8_lookup3_algorithm.h"
+#include "generic/stage1/json_structural_indexer.h"
+
+//
+// Stage 2
+//
+
+#include "arm64/stringparsing.h"
+#include "arm64/numberparsing.h"
+#include "generic/stage2/logger.h"
+#include "generic/stage2/atomparsing.h"
+#include "generic/stage2/structural_iterator.h"
+#include "generic/stage2/structural_parser.h"
+
+//
+// Implementation-specific overrides
+//
+namespace simdjson {
+namespace SIMDJSON_IMPLEMENTATION {
 
 namespace stage1 {
+
 really_inline uint64_t json_string_scanner::find_escaped(uint64_t backslash) {
   // On ARM, we don't short-circuit this if there are no backslashes, because the branch gives us no
   // benefit and therefore makes things worse.
   // if (!backslash) { uint64_t escaped = prev_escaped; prev_escaped = 0; return escaped; }
   return find_escaped_branchless(backslash);
 }
-}
 
-#include "generic/stage1/json_minifier.h"
+} // namespace stage1
+
 WARN_UNUSED error_code implementation::minify(const uint8_t *buf, size_t len, uint8_t *dst, size_t &dst_len) const noexcept {
   return arm64::stage1::json_minifier::minify<64>(buf, len, dst, dst_len);
 }
-
-#include "generic/stage1/find_next_document_index.h"
-#include "generic/stage1/utf8_lookup3_algorithm.h"
-#include "generic/stage1/json_structural_indexer.h"
 WARN_UNUSED error_code dom_parser_implementation::stage1(const uint8_t *_buf, size_t _len, bool streaming) noexcept {
   this->buf = _buf;
   this->len = _len;
@@ -131,24 +152,6 @@ WARN_UNUSED error_code dom_parser_implementation::stage1(const uint8_t *_buf, si
 WARN_UNUSED bool implementation::validate_utf8(const char *buf, size_t len) const noexcept {
   return simdjson::arm64::stage1::generic_validate_utf8(buf,len);
 }
-
-} // namespace SIMDJSON_IMPLEMENTATION
-} // namespace simdjson
-
-//
-// Stage 2
-//
-
-#include "arm64/stringparsing.h"
-#include "arm64/numberparsing.h"
-
-namespace simdjson {
-namespace SIMDJSON_IMPLEMENTATION {
-
-#include "generic/stage2/logger.h"
-#include "generic/stage2/atomparsing.h"
-#include "generic/stage2/structural_iterator.h"
-#include "generic/stage2/structural_parser.h"
 
 WARN_UNUSED error_code dom_parser_implementation::parse(const uint8_t *_buf, size_t _len, dom::document &_doc) noexcept {
   error_code err = stage1(_buf, _len, false);
