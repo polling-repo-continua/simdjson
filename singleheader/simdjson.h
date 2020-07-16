@@ -1,4 +1,4 @@
-/* auto-generated on Mon Jul  6 18:16:52 EDT 2020. Do not edit! */
+/* auto-generated on Thu Jul 16 14:55:03 PDT 2020. Do not edit! */
 /* begin file include/simdjson.h */
 #ifndef SIMDJSON_H
 #define SIMDJSON_H
@@ -157,31 +157,26 @@ use a 64-bit target such as x64 or 64-bit ARM.")
 #ifdef __clang__
 // clang does not have GCC push pop
 // warning: clang attribute push can't be used within a namespace in clang up
-// til 8.0 so TARGET_REGION and UNTARGET_REGION must be *outside* of a
+// til 8.0 so SIMDJSON_TARGET_REGION and SIMDJSON_UNTARGET_REGION must be *outside* of a
 // namespace.
-#define TARGET_REGION(T)                                                       \
+#define SIMDJSON_TARGET_REGION(T)                                                       \
   _Pragma(STRINGIFY(                                                           \
       clang attribute push(__attribute__((target(T))), apply_to = function)))
-#define UNTARGET_REGION _Pragma("clang attribute pop")
+#define SIMDJSON_UNTARGET_REGION _Pragma("clang attribute pop")
 #elif defined(__GNUC__)
 // GCC is easier
-#define TARGET_REGION(T)                                                       \
+#define SIMDJSON_TARGET_REGION(T)                                                       \
   _Pragma("GCC push_options") _Pragma(STRINGIFY(GCC target(T)))
-#define UNTARGET_REGION _Pragma("GCC pop_options")
+#define SIMDJSON_UNTARGET_REGION _Pragma("GCC pop_options")
 #endif // clang then gcc
 
 #endif // x86
 
 // Default target region macros don't do anything.
-#ifndef TARGET_REGION
-#define TARGET_REGION(T)
-#define UNTARGET_REGION
+#ifndef SIMDJSON_TARGET_REGION
+#define SIMDJSON_TARGET_REGION(T)
+#define SIMDJSON_UNTARGET_REGION
 #endif
-
-// under GCC and CLANG, we use these two macros
-#define TARGET_HASWELL TARGET_REGION("avx2,bmi,pclmul,lzcnt")
-#define TARGET_WESTMERE TARGET_REGION("sse4.2,pclmul")
-#define TARGET_ARM64
 
 // Is threading enabled?
 #if defined(BOOST_HAS_THREADS) || defined(_REENTRANT) || defined(_MT)
@@ -389,8 +384,8 @@ constexpr size_t DEFAULT_MAX_DEPTH = 1024;
 
 #else // SIMDJSON_REGULAR_VISUAL_STUDIO
 
-  #define really_inline inline __attribute__((always_inline, unused))
-  #define never_inline inline __attribute__((noinline, unused))
+  #define really_inline inline __attribute__((always_inline))
+  #define never_inline inline __attribute__((noinline))
 
   #define UNUSED __attribute__((unused))
   #define WARN_UNUSED __attribute__((warn_unused_result))
