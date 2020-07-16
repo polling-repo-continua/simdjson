@@ -1,6 +1,4 @@
-#include "simdjson.h"
-#include "westmere/implementation.h"
-#include "westmere/dom_parser_implementation.h"
+#include "westmere/begin_implementation.h"
 
 //
 // Stage 1
@@ -10,9 +8,8 @@
 #include "westmere/bitmanipulation.h"
 #include "westmere/implementation.h"
 
-TARGET_WESTMERE
 namespace simdjson {
-namespace westmere {
+namespace SIMDJSON_IMPLEMENTATION {
 
 using namespace simd;
 
@@ -104,9 +101,9 @@ WARN_UNUSED error_code dom_parser_implementation::stage1(const uint8_t *_buf, si
 WARN_UNUSED bool implementation::validate_utf8(const char *buf, size_t len) const noexcept {
   return simdjson::westmere::stage1::generic_validate_utf8(buf,len);
 }
-} // namespace westmere
+
+} // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
-UNTARGET_REGION
 
 //
 // Stage 2
@@ -114,9 +111,8 @@ UNTARGET_REGION
 #include "westmere/stringparsing.h"
 #include "westmere/numberparsing.h"
 
-TARGET_WESTMERE
 namespace simdjson {
-namespace westmere {
+namespace SIMDJSON_IMPLEMENTATION {
 
 #include "generic/stage2/logger.h"
 #include "generic/stage2/atomparsing.h"
@@ -129,6 +125,7 @@ WARN_UNUSED error_code dom_parser_implementation::parse(const uint8_t *_buf, siz
   return stage2(_doc);
 }
 
-} // namespace westmere
+} // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
-UNTARGET_REGION
+
+#include "westmere/end_implementation.h"
