@@ -63,10 +63,6 @@ really_inline array array::end() noexcept {
 } // namespace stream
 } // namespace SIMDJSON_IMPLEMENTATION
 
-namespace {
-  using namespace simdjson::SIMDJSON_IMPLEMENTATION::stream;
-}
-
 really_inline simdjson_result<SIMDJSON_IMPLEMENTATION::stream::array>::simdjson_result(SIMDJSON_IMPLEMENTATION::stream::array &&value) noexcept
     : internal::simdjson_result_base<SIMDJSON_IMPLEMENTATION::stream::array>(std::forward<SIMDJSON_IMPLEMENTATION::stream::array>(value)) {}
 really_inline simdjson_result<SIMDJSON_IMPLEMENTATION::stream::array>::simdjson_result(SIMDJSON_IMPLEMENTATION::stream::value &parent, error_code error) noexcept

@@ -41,10 +41,6 @@ protected:
 } // namespace stream
 } // namespace SIMDJSON_IMPLEMENTATION
 
-namespace {
-  using namespace simdjson::SIMDJSON_IMPLEMENTATION::stream;
-}
-
 template<>
 struct simdjson_result<SIMDJSON_IMPLEMENTATION::stream::array> : public internal::simdjson_result_base<SIMDJSON_IMPLEMENTATION::stream::array> {
 public:

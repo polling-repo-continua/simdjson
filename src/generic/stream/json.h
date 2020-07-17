@@ -64,6 +64,8 @@ public:
   really_inline bool advance_if(uint8_t structural) noexcept;
   really_inline bool advance_if(uint8_t structural, uint8_t structural2) noexcept;
   really_inline bool advance_if(uint8_t structural, uint8_t structural2, uint8_t structural3) noexcept;
+  really_inline stream::object resume_object() noexcept;
+  really_inline stream::object begin_object(bool is_object) noexcept;
 
   friend class simdjson_result<stream::json>;
   friend class dom::parser;
@@ -78,10 +80,6 @@ public:
 
 } // namespace stream
 } // namespace SIMDJSON_IMPLEMENTATION
-
-namespace {
-  using namespace simdjson::SIMDJSON_IMPLEMENTATION::stream;
-}
 
 template<>
 struct simdjson_result<SIMDJSON_IMPLEMENTATION::stream::json> : public internal::simdjson_result_base<SIMDJSON_IMPLEMENTATION::stream::json> {

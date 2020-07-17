@@ -62,12 +62,16 @@ really_inline bool json::advance_if(uint8_t structural, uint8_t structural2, uin
   return found;
 }
 
+really_inline stream::object json::resume_object() noexcept {
+  return stream::object::resume(this);
+}
+
+really_inline stream::object json::begin_object(bool is_object) noexcept {
+  return stream::object::begin(value, is_object);
+}
+
 } // namespace stream
 } // namespace SIMDJSON_IMPLEMENTATION
-
-namespace {
-  using namespace simdjson::SIMDJSON_IMPLEMENTATION::stream;
-}
 
 really_inline simdjson_result<SIMDJSON_IMPLEMENTATION::stream::json>::simdjson_result(SIMDJSON_IMPLEMENTATION::stream::json &&value) noexcept
     : internal::simdjson_result_base<SIMDJSON_IMPLEMENTATION::stream::json>(std::forward<SIMDJSON_IMPLEMENTATION::stream::json>(value)) {}
