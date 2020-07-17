@@ -4,7 +4,7 @@ namespace stream {
 
 really_inline value::value() noexcept : json{}, depth{} {}
 
-really_inline value::value(stream::json *_json, int _depth) noexcept : json{_json}, depth{_depth} {}
+really_inline value::value(stream::json *_json, uint32_t _depth) noexcept : json{_json}, depth{_depth} {}
 
 really_inline simdjson_result<array> value::get_array() && noexcept {
   consumed = true;

@@ -77,7 +77,7 @@ really_inline simd8<bool> must_be_2_3_continuation(simd8<uint8_t> prev2, simd8<u
 //
 #include "haswell/stringparsing.h"
 #include "haswell/numberparsing.h"
-#include "generic/stage2/structural_parser.h"
+#include "generic/stage2/structural_parser_stream.h"
 
 //
 // Implementation-specific overrides
@@ -114,7 +114,5 @@ WARN_UNUSED error_code dom_parser_implementation::parse(const uint8_t *_buf, siz
 
 } // namespace SIMDJSON_IMPLEMENTATION
 } // namespace simdjson
-
-#include "generic/stream.h"
 
 #include "haswell/end_implementation.h"

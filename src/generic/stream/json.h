@@ -46,12 +46,12 @@ public:
   really_inline array end() noexcept;
   really_inline simdjson_result<stream::value&> operator[](std::string_view key) noexcept;
 
-protected:
-  really_inline json(const uint32_t *_index, const uint8_t *_buf, uint8_t *_string_buf, int _depth=0) noexcept;
+// protected:
+  really_inline json(const uint32_t *_index, const uint8_t *_buf, uint8_t *_string_buf, uint32_t _depth=0) noexcept;
   const uint32_t *index; //< Current position
   const uint8_t * buf; //< Buffer
   uint8_t *string_buf; //< String buffer
-  int depth; //< Current depth
+  uint32_t depth; //< Current depth
   stream::value value; //< Points to this; used internally only, to return value& when needed
 
   //
@@ -67,6 +67,7 @@ protected:
 
   friend class simdjson_result<stream::json>;
   friend class dom::parser;
+  // friend struct simdjson::SIMDJSON_IMPLEMENTATION::stage2::structural_parser;
   friend class stream::value;
   friend class object;
   friend class array;

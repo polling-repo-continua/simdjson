@@ -40,7 +40,7 @@ static really_inline void log_string(const char *message) {
   }
 }
 
-static really_inline void log_event(const char *event_prefix, const char *event, const uint8_t *buf, const int depth, const char *detail) {
+static really_inline void log_event(const char *event_prefix, const char *event, const uint8_t *buf, const uint32_t depth, const char *detail) {
   static_assert(LOG_BUFFER_LEN <= SIMDJSON_PADDING, "LOG_BUFFER_LEN must be smaller than SIMDJSON_PADDING!");
   if (LOG_ENABLED) {
     printf("| %*s%s%-*s ", log_depth*2, "", event_prefix, LOG_EVENT_LEN - log_depth*2 - int(strlen(event_prefix)), event);

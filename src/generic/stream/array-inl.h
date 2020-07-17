@@ -3,7 +3,7 @@ namespace SIMDJSON_IMPLEMENTATION {
 namespace stream {
 
 really_inline array::array() noexcept : value{}, finished{}, error{} {}
-really_inline array::array(stream::json *json, int depth, bool _finished, error_code _error) noexcept : value(json, depth), finished{_finished}, error{_error} {}
+really_inline array::array(stream::json *json, uint32_t depth, bool _finished, error_code _error) noexcept : value(json, depth), finished{_finished}, error{_error} {}
 really_inline array::array(stream::value &parent, error_code _error) noexcept : array(parent.json, parent.depth+1, true, _error) {}
 really_inline simdjson_result<value&> array::operator*() noexcept { return { value, error }; }
 really_inline bool array::operator!=(array &) noexcept { return !finished; }

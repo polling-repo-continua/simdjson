@@ -13,7 +13,7 @@ public:
 
   really_inline raw_json_string key() noexcept;
 protected:
-  really_inline field(stream::json *_json, int _depth) noexcept;
+  really_inline field(stream::json *_json, uint32_t _depth) noexcept;
   friend class simdjson_result<stream::field>;
   friend class object;
 };

@@ -24,7 +24,7 @@ public:
   really_inline object end() noexcept;
 
 protected:
-  really_inline object(stream::json *_json, int _depth, bool _finished, error_code _error=SUCCESS) noexcept;
+  really_inline object(stream::json *_json, uint32_t _depth, bool _finished, error_code _error=SUCCESS) noexcept;
   really_inline object(stream::value &parent, error_code _error) noexcept;
 
   really_inline void advance() noexcept;

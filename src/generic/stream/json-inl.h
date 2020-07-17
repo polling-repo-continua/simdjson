@@ -31,7 +31,7 @@ really_inline simdjson_result<value&> json::operator[](std::string_view key) noe
 really_inline json::json(json &&other) noexcept
   : index{other.index}, buf{other.buf}, string_buf{other.string_buf}, depth{other.depth}, value(this, other.value.depth) {}
 
-really_inline json::json(const uint32_t *_index, const uint8_t *_buf, uint8_t *_string_buf, int _depth) noexcept
+really_inline json::json(const uint32_t *_index, const uint8_t *_buf, uint8_t *_string_buf, uint32_t _depth) noexcept
   : index{_index}, buf{_buf}, string_buf{_string_buf}, depth{_depth}, value(this, _depth) {}
 
 really_inline const uint8_t *json::advance() noexcept { auto result = &buf[*index]; index++; return result; }

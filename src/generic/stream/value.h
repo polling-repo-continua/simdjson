@@ -42,13 +42,13 @@ public:
   really_inline simdjson_result<value&> operator[](std::string_view key) && noexcept;
 
 protected:
-  really_inline value(stream::json *json, int depth) noexcept;
+  really_inline value(stream::json *json, uint32_t depth) noexcept;
   /** Get to the end of any child arrays and objects we started but didn't finish */
   really_inline void finish() noexcept;
   really_inline const uint8_t *consume() noexcept;
 
   stream::json *json;
-  int depth;
+  uint32_t depth;
   bool consumed{false};
   friend class simdjson_result<stream::value&>;
   friend class simdjson_result<stream::object>;

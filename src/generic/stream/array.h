@@ -21,7 +21,7 @@ public:
   really_inline array end() noexcept;
 
 protected:
-  really_inline array(stream::json *_json, int _depth, bool _finished, error_code _error=SUCCESS) noexcept;
+  really_inline array(stream::json *_json, uint32_t _depth, bool _finished, error_code _error=SUCCESS) noexcept;
   really_inline array(stream::value &parent, error_code _error) noexcept;
 
   really_inline void advance() noexcept;
