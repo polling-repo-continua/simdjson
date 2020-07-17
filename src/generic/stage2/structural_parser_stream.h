@@ -54,27 +54,26 @@ struct unified_machine_addresses {
 #undef FAIL_IF
 #define FAIL_IF(EXPR) { if (EXPR) { return addresses.error; } }
 
-struct structural_parser {
-  stream::json json;
+struct structural_parser : stream::json {
   /** Lets you append to the tape */
   tape_writer tape;
   dom_parser_implementation &parser;
 
   // For non-streaming, to pass an explicit 0 as next_structural, which enables optimizations
   really_inline structural_parser(dom_parser_implementation &_parser, uint32_t start_structural_index)
-    : json(&_parser.structural_indexes[start_structural_index], _parser.buf, _parser.doc->string_buf.get()),
+    : stream::json(&_parser.structural_indexes[start_structural_index], _parser.buf, _parser.doc->string_buf.get()),
       tape{_parser.doc->tape.get()},
       parser{_parser} {
   }
 
   WARN_UNUSED really_inline bool start_scope(ret_address_t continue_state) {
-    parser.containing_scope[json.depth].tape_index = next_tape_index();
-    parser.containing_scope[json.depth].count = 0;
+    parser.containing_scope[depth].tape_index = next_tape_index();
+    parser.containing_scope[depth].count = 0;
     tape.skip(); // We don't actually *write* the start element until the end.
-    parser.ret_address[json.depth] = continue_state;
-    json.depth++;
-    bool exceeded_max_depth = json.depth >= parser.max_depth();
-    if (exceeded_max_depth) { log_error("Exceeded max json.depth!"); }
+    parser.ret_address[depth] = continue_state;
+    depth++;
+    bool exceeded_max_depth = depth >= parser.max_depth();
+    if (exceeded_max_depth) { log_error("Exceeded max depth!"); }
     return exceeded_max_depth;
   }
 
@@ -95,14 +94,14 @@ struct structural_parser {
 
   // this function is responsible for annotating the start of the scope
   really_inline void end_scope(internal::tape_type start, internal::tape_type end) noexcept {
-    json.depth--;
+    depth--;
     // write our doc->tape location to the header scope
     // The root scope gets written *at* the previous location.
-    tape.append(parser.containing_scope[json.depth].tape_index, end);
+    tape.append(parser.containing_scope[depth].tape_index, end);
     // count can overflow if it exceeds 24 bits... so we saturate
     // the convention being that a cnt of 0xffffff or more is undetermined in value (>=  0xffffff).
-    const uint32_t start_tape_index = parser.containing_scope[json.depth].tape_index;
-    const uint32_t count = parser.containing_scope[json.depth].count;
+    const uint32_t start_tape_index = parser.containing_scope[depth].tape_index;
+    const uint32_t count = parser.containing_scope[depth].count;
     const uint32_t cntsat = count > 0xFFFFFF ? 0xFFFFFF : count;
     // This is a load and an OR. It would be possible to just write once at doc->tape[d.tape_index]
     tape_writer::write(parser.doc->tape[start_tape_index], next_tape_index() | (uint64_t(cntsat) << 32), start);
@@ -127,34 +126,34 @@ struct structural_parser {
 
   // increment_count increments the count of keys in an object or values in an array.
   // Note that if you are at the level of the values or elements, the count
-  // must be increment in the preceding json.depth (json.depth-1) where the array or
+  // must be increment in the preceding depth (depth-1) where the array or
   // the object resides.
   really_inline void increment_count() {
-    parser.containing_scope[json.depth - 1].count++; // we have a key value pair in the object at parser.json.depth - 1
+    parser.containing_scope[depth - 1].count++; // we have a key value pair in the object at parser.depth - 1
   }
 
   really_inline uint8_t *on_start_string() noexcept {
     // we advance the point, accounting for the fact that we have a NULL termination
-    tape.append(json.string_buf - parser.doc->string_buf.get(), internal::tape_type::STRING);
-    return json.string_buf + sizeof(uint32_t);
+    tape.append(string_buf - parser.doc->string_buf.get(), internal::tape_type::STRING);
+    return string_buf + sizeof(uint32_t);
   }
 
   really_inline void on_end_string(uint8_t *dst) noexcept {
-    uint32_t str_length = uint32_t(dst - (json.string_buf + sizeof(uint32_t)));
+    uint32_t str_length = uint32_t(dst - (string_buf + sizeof(uint32_t)));
     // TODO check for overflow in case someone has a crazy string (>=4GB?)
     // But only add the overflow check when the document itself exceeds 4GB
     // Currently unneeded because we refuse to parse docs larger or equal to 4GB.
-    memcpy(json.string_buf, &str_length, sizeof(uint32_t));
+    memcpy(string_buf, &str_length, sizeof(uint32_t));
     // NULL termination is still handy if you expect all your strings to
     // be NULL terminated? It comes at a small cost
     *dst = 0;
-    json.string_buf = dst + 1;
+    string_buf = dst + 1;
   }
 
-  WARN_UNUSED really_inline bool parse_string(bool key = false) {
+  WARN_UNUSED really_inline bool parse_string(const uint8_t *src, bool key = false) {
     log_value(key ? "key" : "string");
     uint8_t *dst = on_start_string();
-    dst = stringparsing::parse_string(current(), dst);
+    dst = stringparsing::parse_string(src, dst);
     if (dst == nullptr) {
       log_error("Invalid escape in string");
       return true;
@@ -168,9 +167,6 @@ struct structural_parser {
     bool succeeded = numberparsing::parse_number(src, tape);
     if (!succeeded) { log_error("Invalid number"); }
     return !succeeded;
-  }
-  WARN_UNUSED really_inline bool parse_number() {
-    return parse_number(current());
   }
 
   really_inline bool parse_number_with_space_terminated_copy() {
@@ -191,37 +187,38 @@ struct structural_parser {
     if (copy == nullptr) {
       return true;
     }
-    memcpy(copy, json.buf, parser.len);
+    memcpy(copy, buf, parser.len);
     memset(copy + parser.len, ' ', SIMDJSON_PADDING);
-    size_t idx = *json.index;
+    size_t idx = peek_index(-1);
     bool result = parse_number(&copy[idx]); // parse_number does not throw
     free(copy);
     return result;
   }
   WARN_UNUSED really_inline ret_address_t parse_value(const unified_machine_addresses &addresses, ret_address_t continue_state) {
-    switch (advance_char()) {
+    const uint8_t *src = advance();
+    switch (*src) {
     case '"':
-      FAIL_IF( parse_string() );
+      FAIL_IF( parse_string(src) );
       return continue_state;
     case 't':
       log_value("true");
-      FAIL_IF( !atomparsing::is_valid_true_atom(current()) );
+      FAIL_IF( !atomparsing::is_valid_true_atom(src) );
       tape.append(0, internal::tape_type::TRUE_VALUE);
       return continue_state;
     case 'f':
       log_value("false");
-      FAIL_IF( !atomparsing::is_valid_false_atom(current()) );
+      FAIL_IF( !atomparsing::is_valid_false_atom(src) );
       tape.append(0, internal::tape_type::FALSE_VALUE);
       return continue_state;
     case 'n':
       log_value("null");
-      FAIL_IF( !atomparsing::is_valid_null_atom(current()) );
+      FAIL_IF( !atomparsing::is_valid_null_atom(src) );
       tape.append(0, internal::tape_type::NULL_VALUE);
       return continue_state;
     case '-':
     case '0': case '1': case '2': case '3': case '4':
     case '5': case '6': case '7': case '8': case '9':
-      FAIL_IF( parse_number() );
+      FAIL_IF( parse_number(src) );
       return continue_state;
     case '{':
       FAIL_IF( start_object(continue_state) );
@@ -237,9 +234,9 @@ struct structural_parser {
 
   WARN_UNUSED really_inline error_code finish() {
     end_document();
-    parser.next_structural_index = uint32_t(json.index + 1 - &parser.structural_indexes[0]);
+    parser.next_structural_index = uint32_t(index - &parser.structural_indexes[0]);
 
-    if (json.depth != 0) {
+    if (depth != 0) {
       log_error("Unclosed objects or arrays!");
       return parser.error = TAPE_ERROR;
     }
@@ -258,10 +255,10 @@ struct structural_parser {
     * We could even trigger special code paths to assess what happened
     * carefully,
     * all without any added cost. */
-    if (json.depth >= parser.max_depth()) {
+    if (depth >= parser.max_depth()) {
       return parser.error = DEPTH_ERROR;
     }
-    switch (current_char()) {
+    switch (*peek(-1)) {
     case '"':
       return parser.error = STRING_ERROR;
     case '0':
@@ -306,37 +303,21 @@ struct structural_parser {
     return SUCCESS;
   }
 
-  // Get the buffer position of the current structural character
-  really_inline const uint8_t* current() {
-    return json.peek(0);
-  }
-  // Get the current structural character
-  really_inline char current_char() {
-    return *json.peek(0);
-  }
-  // Get the next structural character without advancing
-  really_inline char peek_next_char() {
-    return *json.peek(1);
-  }
-  really_inline char advance_char() {
-    json.advance();
-    return current_char();
-  }
   really_inline size_t remaining_len() {
-    return parser.len - *json.index;
+    return parser.len - peek_index(-1);
   }
   really_inline uint32_t peek_index(int n) {
-    return *(json.index+n);
+    return *(index+n);
   }
 
   really_inline bool past_end(uint32_t n_structural_indexes) {
-    return json.index >= &parser.structural_indexes[n_structural_indexes];
+    return index >= &parser.structural_indexes[n_structural_indexes];
   }
   really_inline bool at_end(uint32_t n_structural_indexes) {
-    return json.index == &parser.structural_indexes[n_structural_indexes];
+    return index == &parser.structural_indexes[n_structural_indexes];
   }
   really_inline bool at_beginning() {
-    return json.index == parser.structural_indexes.get();
+    return index == parser.structural_indexes.get();
   }
 
   really_inline void log_value(const char *type) {
@@ -378,59 +359,63 @@ WARN_UNUSED static error_code parse_structurals(dom_parser_implementation &dom_p
   //
   // Read first value
   //
-  switch (parser.current_char()) {
-  case '{':
-    FAIL_IF( parser.start_object(addresses.finish) );
-    goto object_begin;
-  case '[':
-    FAIL_IF( parser.start_array(addresses.finish) );
-    // Make sure the outer array is closed before continuing; otherwise, there are ways we could get
-    // into memory corruption. See https://github.com/simdjson/simdjson/issues/906
-    if (!STREAMING) {
-      if (parser.json.buf[dom_parser.structural_indexes[dom_parser.n_structural_indexes - 1]] != ']') {
-        goto error;
+  {
+    const uint8_t *src = parser.advance();
+    switch (*src) {
+    case '{':
+      FAIL_IF( parser.start_object(addresses.finish) );
+      goto object_begin;
+    case '[':
+      FAIL_IF( parser.start_array(addresses.finish) );
+      // Make sure the outer array is closed before continuing; otherwise, there are ways we could get
+      // into memory corruption. See https://github.com/simdjson/simdjson/issues/906
+      if (!STREAMING) {
+        if (parser.buf[dom_parser.structural_indexes[dom_parser.n_structural_indexes - 1]] != ']') {
+          goto error;
+        }
       }
+      goto array_begin;
+    case '"':
+      FAIL_IF( parser.parse_string(src) );
+      goto finish;
+    case 't':
+      parser.log_value("true");
+      FAIL_IF( !atomparsing::is_valid_true_atom(src, parser.remaining_len()) );
+      parser.tape.append(0, internal::tape_type::TRUE_VALUE);
+      goto finish;
+    case 'f':
+      parser.log_value("false");
+      FAIL_IF( !atomparsing::is_valid_false_atom(src, parser.remaining_len()) );
+      parser.tape.append(0, internal::tape_type::FALSE_VALUE);
+      goto finish;
+    case 'n':
+      parser.log_value("null");
+      FAIL_IF( !atomparsing::is_valid_null_atom(src, parser.remaining_len()) );
+      parser.tape.append(0, internal::tape_type::NULL_VALUE);
+      goto finish;
+    case '-':
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      // Next line used to be an interesting functional programming exercise with
+      // a lambda that gets passed to another function via a closure. This would confuse the
+      // clangcl compiler under Visual Studio 2019 (recent release).
+      FAIL_IF(parser.parse_number_with_space_terminated_copy());
+      goto finish;
+    default:
+      parser.log_error("Document starts with a non-value character");
+      goto error;
     }
-    goto array_begin;
-  case '"':
-    FAIL_IF( parser.parse_string() );
-    goto finish;
-  case 't':
-    parser.log_value("true");
-    FAIL_IF( !atomparsing::is_valid_true_atom(parser.current(), parser.remaining_len()) );
-    parser.tape.append(0, internal::tape_type::TRUE_VALUE);
-    goto finish;
-  case 'f':
-    parser.log_value("false");
-    FAIL_IF( !atomparsing::is_valid_false_atom(parser.current(), parser.remaining_len()) );
-    parser.tape.append(0, internal::tape_type::FALSE_VALUE);
-    goto finish;
-  case 'n':
-    parser.log_value("null");
-    FAIL_IF( !atomparsing::is_valid_null_atom(parser.current(), parser.remaining_len()) );
-    parser.tape.append(0, internal::tape_type::NULL_VALUE);
-    goto finish;
-  case '-':
-  case '0': case '1': case '2': case '3': case '4':
-  case '5': case '6': case '7': case '8': case '9':
-    // Next line used to be an interesting functional programming exercise with
-    // a lambda that gets passed to another function via a closure. This would confuse the
-    // clangcl compiler under Visual Studio 2019 (recent release).
-    FAIL_IF(parser.parse_number_with_space_terminated_copy());
-    goto finish;
-  default:
-    parser.log_error("Document starts with a non-value character");
-    goto error;
   }
 
 //
 // Object parser states
 //
-object_begin:
-  switch (parser.advance_char()) {
+object_begin: {
+  const uint8_t *src = parser.advance();
+  switch (*src) {
   case '"': {
     parser.increment_count();
-    FAIL_IF( parser.parse_string(true) );
+    FAIL_IF( parser.parse_string(src, true) );
     goto object_key_state;
   }
   case '}':
@@ -440,18 +425,21 @@ object_begin:
     parser.log_error("Object does not start with a key");
     goto error;
   }
+}
 
 object_key_state:
-  if (parser.advance_char() != ':' ) { parser.log_error("Missing colon after key in object"); goto error; }
+  if (*parser.advance() != ':' ) { parser.log_error("Missing colon after key in object"); goto error; }
   GOTO( parser.parse_value(addresses, addresses.object_continue) );
 
-object_continue:
-  switch (parser.advance_char()) {
-  case ',':
+object_continue: {
+  switch (*parser.advance()) {
+  case ',': {
     parser.increment_count();
-    if (parser.advance_char() != '"' ) { parser.log_error("Key string missing at beginning of field in object"); goto error; }
-    FAIL_IF( parser.parse_string(true) );
+    const uint8_t *src = parser.advance();
+    if (*src != '"' ) { parser.log_error("Key string missing at beginning of field in object"); goto error; }
+    FAIL_IF( parser.parse_string(src, true) );
     goto object_key_state;
+  }
   case '}':
     parser.end_object();
     goto scope_end;
@@ -459,16 +447,16 @@ object_continue:
     parser.log_error("No comma between object fields");
     goto error;
   }
+}
 
 scope_end:
-  CONTINUE( parser.parser.ret_address[parser.json.depth] );
+  CONTINUE( parser.parser.ret_address[parser.depth] );
 
 //
 // Array parser states
 //
 array_begin:
-  if (parser.peek_next_char() == ']') {
-    parser.advance_char();
+  if (parser.advance_if(']')) {
     parser.end_array();
     goto scope_end;
   }
@@ -480,7 +468,7 @@ main_array_switch:
   GOTO( parser.parse_value(addresses, addresses.array_continue) );
 
 array_continue:
-  switch (parser.advance_char()) {
+  switch (*parser.advance()) {
   case ',':
     parser.increment_count();
     goto main_array_switch;
