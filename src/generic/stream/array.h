@@ -46,15 +46,15 @@ namespace {
 }
 
 template<>
-struct simdjson_result<array> : public internal::simdjson_result_base<array> {
+struct simdjson_result<SIMDJSON_IMPLEMENTATION::stream::array> : public internal::simdjson_result_base<SIMDJSON_IMPLEMENTATION::stream::array> {
 public:
-  really_inline simdjson_result(array &&value) noexcept; ///< @private
-  really_inline simdjson_result(stream::value &parent, error_code error) noexcept; ///< @private
+  really_inline simdjson_result(SIMDJSON_IMPLEMENTATION::stream::array &&value) noexcept; ///< @private
+  really_inline simdjson_result(SIMDJSON_IMPLEMENTATION::stream::value &parent, error_code error) noexcept; ///< @private
 
-  really_inline simdjson_result<stream::value&> operator[](std::string_view key) noexcept;
+  really_inline simdjson_result<SIMDJSON_IMPLEMENTATION::stream::value&> operator[](std::string_view key) noexcept;
 
-  really_inline array begin() noexcept;
-  really_inline array end() noexcept;
+  really_inline SIMDJSON_IMPLEMENTATION::stream::array begin() noexcept;
+  really_inline SIMDJSON_IMPLEMENTATION::stream::array end() noexcept;
 };
 
 } // namespace simdjson

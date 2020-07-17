@@ -7,8 +7,6 @@
 namespace simdjson {
 namespace arm64 {
 
-using namespace simdjson::dom;
-
 class implementation final : public simdjson::implementation {
 public:
   really_inline implementation() : simdjson::implementation("arm64", "ARM NEON", instruction_set::NEON) {}

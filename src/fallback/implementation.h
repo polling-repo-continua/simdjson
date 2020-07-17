@@ -7,8 +7,6 @@
 namespace simdjson {
 namespace fallback {
 
-using namespace simdjson::dom;
-
 class implementation final : public simdjson::implementation {
 public:
   really_inline implementation() : simdjson::implementation(

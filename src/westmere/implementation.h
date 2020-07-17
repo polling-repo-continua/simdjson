@@ -9,8 +9,6 @@
 namespace simdjson {
 namespace westmere {
 
-using namespace simdjson::dom;
-
 class implementation final : public simdjson::implementation {
 public:
   really_inline implementation() : simdjson::implementation("westmere", "Intel/AMD SSE4.2", instruction_set::SSE42 | instruction_set::PCLMULQDQ) {}
