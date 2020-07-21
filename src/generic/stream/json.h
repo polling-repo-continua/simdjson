@@ -59,13 +59,31 @@ public:
   //
   really_inline const uint8_t *advance() noexcept;
   really_inline const uint8_t *peek(int n) const noexcept;
+  really_inline uint32_t peek_index(int n) const noexcept;
   really_inline bool advance_if_start(uint8_t structural) noexcept;
   really_inline bool advance_if_end(uint8_t structural) noexcept;
   really_inline bool advance_if(uint8_t structural) noexcept;
   really_inline bool advance_if(uint8_t structural, uint8_t structural2) noexcept;
   really_inline bool advance_if(uint8_t structural, uint8_t structural2, uint8_t structural3) noexcept;
-  really_inline stream::object resume_object() noexcept;
-  really_inline stream::object begin_object(bool is_object) noexcept;
+
+  //
+  // Object methods
+  //
+  really_inline simdjson_result<const uint8_t *> begin_object() noexcept;
+  really_inline simdjson_result<const uint8_t *> first_object_field() noexcept;
+  really_inline simdjson_result<const uint8_t *> next_object_field() noexcept;
+
+  template<bool DELTA=0>
+  really_inline void log_value(const char *type) const noexcept;
+  template<bool DELTA=0>
+  really_inline void log_event(const char *type) const noexcept;
+  static really_inline void log_start() noexcept;
+  template<bool DELTA=0>
+  really_inline void log_start_value(const char *type) const noexcept;
+  template<bool DELTA=0>
+  really_inline void log_end_value(const char *type) const noexcept;
+  template<bool DELTA=0>
+  really_inline void log_error(const char *error) const noexcept;
 
   friend class simdjson_result<stream::json>;
   friend class dom::parser;
@@ -74,8 +92,6 @@ public:
   friend class object;
   friend class array;
   friend class field;
-  template<typename T>
-  friend void logger::log_event(const char *event_prefix, const char *event, T &json, const char *detail, bool prev);
 };
 
 } // namespace stream
