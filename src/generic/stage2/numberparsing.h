@@ -472,7 +472,7 @@ really_inline bool parse_number(const uint8_t *const src, W &writer) {
   if (i > uint64_t(INT64_MAX)) {
     WRITE_UNSIGNED(i, src, writer);
   } else {
-    WRITE_INTEGER(negative ? 0 - i : i, src, writer);
+    WRITE_INTEGER(negative ? (0 - i) : i, src, writer);
   }
   return is_structural_or_whitespace(*p);
 }
