@@ -14,46 +14,6 @@ namespace stage2 {
 
 namespace {
 
-#ifdef SIMDJSON_USE_COMPUTED_GOTO
-#define INIT_ADDRESSES() { &&array_begin, &&array_continue, &&error, &&finish, &&object_begin, &&object_continue }
-#define GOTO(address) { goto *(address); }
-#define CONTINUE(address) { goto *(address); }
-#else // SIMDJSON_USE_COMPUTED_GOTO
-#define INIT_ADDRESSES() { '[', 'a', 'e', 'f', '{', 'o' };
-#define GOTO(address)                 \
-  {                                   \
-    switch(address) {                 \
-      case '[': goto array_begin;     \
-      case 'a': goto array_continue;  \
-      case 'e': goto error;           \
-      case 'f': goto finish;          \
-      case '{': goto object_begin;    \
-      case 'o': goto object_continue; \
-    }                                 \
-  }
-// For the more constrained end_xxx() situation
-#define CONTINUE(address)             \
-  {                                   \
-    switch(address) {                 \
-      case 'a': goto array_continue;  \
-      case 'o': goto object_continue; \
-      case 'f': goto finish;          \
-    }                                 \
-  }
-#endif // SIMDJSON_USE_COMPUTED_GOTO
-
-struct unified_machine_addresses {
-  ret_address_t array_begin;
-  ret_address_t array_continue;
-  ret_address_t error;
-  ret_address_t finish;
-  ret_address_t object_begin;
-  ret_address_t object_continue;
-};
-
-#undef FAIL_IF
-#define FAIL_IF(EXPR) { if (EXPR) { return addresses.error; } }
-
 struct structural_parser : stream::json {
   /** Lets you append to the tape */
   tape_writer tape;
@@ -66,11 +26,15 @@ struct structural_parser : stream::json {
       parser{_parser} {
   }
 
-  really_inline void start_scope(ret_address_t continue_state) {
+  really_inline void start_scope(bool in_object) {
     parser.containing_scope[depth].tape_index = next_tape_index();
     parser.containing_scope[depth].count = 0;
     tape.skip(); // We don't actually *write* the start element until the end.
-    parser.ret_address[depth] = continue_state;
+    parser.in_object[depth] = in_object;
+  }
+
+  really_inline bool in_object() {
+    return parser.in_object[depth];
   }
 
   WARN_UNUSED really_inline bool exceeded_max_depth() {
@@ -79,10 +43,11 @@ struct structural_parser : stream::json {
     return exceeded;
   }
 
-  WARN_UNUSED really_inline bool start_document(ret_address_t continue_state) {
+  WARN_UNUSED really_inline bool start_document() {
     log_start_value("document");
-    start_scope(continue_state);
+    start_scope(false);
     depth++;
+    assert(depth == 1);
     return exceeded_max_depth();
   }
 
@@ -318,7 +283,7 @@ struct structural_parser : stream::json {
     parser.error = UNINITIALIZED;
   }
 
-  WARN_UNUSED really_inline error_code start(ret_address_t finish_state) {
+  WARN_UNUSED really_inline error_code start() {
     // If there are no structurals left, return EMPTY
     if (at_end()) {
       return parser.error = EMPTY;
@@ -326,7 +291,7 @@ struct structural_parser : stream::json {
 
     init();
     // Push the root scope (there is always at least one scope)
-    if (start_document(finish_state)) {
+    if (start_document()) {
       return parser.error = DEPTH_ERROR;
     }
     return SUCCESS;
@@ -347,17 +312,11 @@ struct structural_parser : stream::json {
   }
 }; // struct structural_parser
 
-// Redefine FAIL_IF to use goto since it'll be used inside the function now
-#undef FAIL_IF
-#define FAIL_IF(EXPR) { if (EXPR) { goto error; } }
-
-
 template<bool STREAMING>
 WARN_UNUSED static error_code parse_structurals(dom_parser_implementation &dom_parser, dom::document &doc) noexcept {
   dom_parser.doc = &doc;
-  static constexpr stage2::unified_machine_addresses addresses = INIT_ADDRESSES();
   stage2::structural_parser parser(dom_parser, STREAMING ? dom_parser.next_structural_index : 0);
-  error_code result = parser.start(addresses.finish);
+  error_code result = parser.start();
   if (result) { return result; }
 
   //
@@ -367,10 +326,10 @@ WARN_UNUSED static error_code parse_structurals(dom_parser_implementation &dom_p
     const uint8_t *src = parser.advance();
     switch (*src) {
     case '{':
-      parser.start_scope(addresses.finish);
+      parser.start_scope(false);
       goto object_begin;
     case '[':
-      parser.start_scope(addresses.finish);
+      parser.start_scope(false);
       // Make sure the outer array is closed before continuing; otherwise, there are ways we could get
       // into memory corruption. See https://github.com/simdjson/simdjson/issues/906
       if (!STREAMING) {
@@ -421,10 +380,10 @@ object_value: {
   const uint8_t *src = parser.advance();
   switch (*src) {
   case '{':
-    parser.start_scope(addresses.object_continue);
+    parser.start_scope(true);
     goto object_begin;
   case '[':
-    parser.start_scope(addresses.object_continue);
+    parser.start_scope(true);
     goto array_begin;
   default:
     if (parser.parse_primitive_value(src)) { goto error; }
@@ -438,7 +397,9 @@ object_value: {
 //
 object_end: {
   parser.end_scope(internal::tape_type::START_OBJECT, internal::tape_type::END_OBJECT);
-  CONTINUE( parser.parser.ret_address[parser.depth] );
+  if (parser.in_object()) { goto object_continue; }
+  if (parser.depth == 1) { goto finish; }
+  goto array_continue;
 }
 
 //
@@ -447,7 +408,9 @@ object_end: {
 //
 array_end: {
   parser.end_scope(internal::tape_type::START_ARRAY, internal::tape_type::END_ARRAY);
-  CONTINUE( parser.parser.ret_address[parser.depth] );
+  if (parser.in_object()) { goto object_continue; }
+  if (parser.depth == 1) { goto finish; }
+  goto array_continue;
 }
 
 //
@@ -482,10 +445,10 @@ array_value: {
   const uint8_t *src = parser.advance();
   switch (*src) {
   case '{':
-    parser.start_scope(addresses.array_continue);
+    parser.start_scope(false);
     goto object_begin;
   case '[':
-    parser.start_scope(addresses.array_continue);
+    parser.start_scope(false);
     goto array_begin;
   default:
     if (parser.parse_primitive_value(src)) { goto error; }
